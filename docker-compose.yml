@@ -1,0 +1,37 @@
+services:
+  keycloak-db:
+    image: postgres:15
+    container_name: lumeva-keycloak-db
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+    ports:
+      - "5440:5432"
+    volumes:
+      - keycloak_data:/var/lib/postgresql/data
+
+  keycloak:
+    image: keycloak/keycloak:26.7
+    container_name: lumeva-keycloak
+    command: start-dev
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_SPI_THEME_CACHE_THEMES: "false"
+      KC_SPI_THEME_CACHE_USERS: "false"
+      KC_SPI_THEME_STATIC_MAX_AGE: "-1"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./themes:/opt/keycloak/themes
+      - ./providers:/opt/keycloak/providers
+    depends_on:
+      - keycloak-db
+
+volumes:
+  keycloak_data:
