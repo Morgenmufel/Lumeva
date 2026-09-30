@@ -1,0 +1,25 @@
+{
+  "name": "lumeva-outbox-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "tasks.max": "1",
+    "plugin.name": "pgoutput",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "postgres",
+    "database.password": "postgres",
+    "database.dbname": "lumeva_profile",
+    "topic.prefix": "lumeva",
+    "table.include.list": "public.outbox_events",
+
+    "snapshot.mode": "initial",
+
+    "transforms": "outbox",
+    "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+    "transforms.outbox.route.by.field": "type",
+    "transforms.outbox.route.topic.replacement": "profile-\u0024{routedByValue}",
+    "transforms.outbox.table.fields.additional.placement": "type:header",
+
+    "transforms.outbox.aggregate.id.routing.field": "aggregate_id"
+  }
+}

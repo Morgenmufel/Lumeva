@@ -1,0 +1,17 @@
+spring:
+  liquibase:
+    enabled: true
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:9999/dummy-certs
+
+lumeva:
+  internal-secret: test-internal-secret

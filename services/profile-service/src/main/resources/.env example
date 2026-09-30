@@ -1,0 +1,29 @@
+
+# --- Server Config ---
+# Сервис профилей задействует порт 8081, чтобы не конфликтовать с Gateway (8080), Keycloak (8082) и другими сервисами
+SERVER_PORT=8081
+SPRING_PROFILES_ACTIVE=local
+
+# --- PostgreSQL Config ---
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=lumeva_profile
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+
+# --- Redis Config ---
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+
+# --- Kafka Config ---
+KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+
+# --- Keycloak OAuth2 / Security Config ---
+# URL реала Keycloak для загрузки публичных ключей JWKS
+KEYCLOAK_BASE_URL=http://localhost:8080
+KEYCLOAK_REALM=lumeva
+
+# --- Internal Service Inter-communication ---
+# Секретный заголовок для внутренних REST-вызовов от API Gateway при регистрации
+INTERNAL_API_SECRET=super-secret-internal-key
