@@ -6,7 +6,10 @@ import lumeva.profileservice.application.dto.*;
 import lumeva.profileservice.application.event.ProfileCacheSyncEvent;
 import lumeva.profileservice.domain.exceptions.DomainValidationException;
 import lumeva.profileservice.domain.exceptions.ProfileNotFoundException;
-import lumeva.profileservice.domain.model.*;
+import lumeva.profileservice.domain.model.Avatar;
+import lumeva.profileservice.domain.model.PersonalInfo;
+import lumeva.profileservice.domain.model.Preferences;
+import lumeva.profileservice.domain.model.UserProfile;
 import lumeva.profileservice.domain.port.in.GetProfileUseCase;
 import lumeva.profileservice.domain.port.in.ProvisionProfileUseCase;
 import lumeva.profileservice.domain.port.in.UpdateProfileUseCase;
@@ -148,32 +151,48 @@ public class UserProfileApplicationService implements GetProfileUseCase, UpdateP
         UserProfile profile = fetchWriteProfile(command.userId());
 
         profile.deleteAccount();
-        writeRepository.save(profile);
+        UserProfile savedProfile = writeRepository.save(profile);
 
-        eventPublisher.publishProfileDeleted(profile.getId(), profile.getEmail());
+        // в событие нужна новая версия агрегата, поэтому передаём сохранённый профиль
+        eventPublisher.publishProfileDeleted(savedProfile);
 
         log.info("Soft-deleted user profile: {}", command.userId());
     }
 
+    /**
+     * Идемпотентное создание профиля: повтор события регистрации или JIT-вызов
+     * для уже существующего профиля возвращает его, а не создаёт дубль (ADR-008).
+     * Уникальность username гарантирует Keycloak, в БД дополнительно стоит unique-ограничение.
+     */
     @Override
     @Transactional
     public UserProfile createInitialProfile(ProvisionProfileCommand command) {
-        if (writeRepository.existsByEmailAndStatusNot(command.email(), ProfileStatus.DELETED)) {
-            throw new DomainValidationException("Active profile with email " + command.email() + " already exists");
-        }
+        return writeRepository.findById(command.userId())
+                .orElseGet(() -> {
+                    try {
+                        UserProfile savedProfile = writeRepository.save(
+                                UserProfile.createInitial(command.userId(), command.username()));
+                        eventPublisher.publishProfileCreated(savedProfile);
+                        log.info("Provisioned new profile: {}", command.userId());
+                        return savedProfile;
+                    } catch (DataIntegrityViolationException e) {
+                        log.warn("Username conflict while provisioning profile {}", command.userId());
+                        throw new DomainValidationException("Username " + command.username() + " is already taken");
+                    }
+                });
+    }
 
-        try {
-            UserProfile initialProfile = UserProfile.createInitial(command.userId(), command.email());
-            UserProfile savedProfile = writeRepository.save(initialProfile);
-
-            log.info("Successfully provisioned new profile in Write Model: {}", command.userId());
-            eventPublisher.publishProfileCreated(savedProfile);
-
-            return savedProfile;
-        } catch (DataIntegrityViolationException e) {
-            log.warn("Concurrent provisioning attempt for email: {}", command.email());
-            throw new DomainValidationException("Active profile with email " + command.email() + " already exists");
-        }
+    @Override
+    @Transactional
+    public UserProfile getOrProvisionMyProfile(UUID userId, String username) {
+        return writeRepository.findById(userId)
+                .orElseGet(() -> {
+                    String safeUsername = (username == null || username.isBlank())
+                            ? "user-" + userId.toString().substring(0, 8)
+                            : username;
+                    log.info("Profile {} not found, provisioning just-in-time from token", userId);
+                    return createInitialProfile(new ProvisionProfileCommand(userId, safeUsername));
+                });
     }
 
     private UserProfile saveAndPublish(UserProfile profile) {

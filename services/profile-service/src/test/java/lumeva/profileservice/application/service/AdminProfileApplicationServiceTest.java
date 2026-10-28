@@ -1,8 +1,9 @@
 package lumeva.profileservice.application.service;
 
-import lumeva.profileservice.application.dto.BanUserCommand;
+import lumeva.profileservice.application.dto.SanitizeProfileCommand;
 import lumeva.profileservice.application.event.ProfileCacheSyncEvent;
 import lumeva.profileservice.domain.exceptions.ProfileNotFoundException;
+import lumeva.profileservice.domain.model.PersonalInfo;
 import lumeva.profileservice.domain.model.UserProfile;
 import lumeva.profileservice.domain.port.out.AuditLogPort;
 import lumeva.profileservice.domain.port.out.ProfileEventPublisherPort;
@@ -15,7 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
-import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -35,41 +36,41 @@ class AdminProfileApplicationServiceTest {
     @InjectMocks private AdminProfileApplicationService adminService;
 
     private UUID targetUserId;
-    private UUID adminId;
-    private UserProfile activeProfile;
+    private UUID moderatorId;
+    private UserProfile profile;
 
     @BeforeEach
     void setUp() {
         targetUserId = UUID.randomUUID();
-        adminId = UUID.randomUUID();
-        activeProfile = UserProfile.createInitial(targetUserId, "user@lumeva.com");
+        moderatorId = UUID.randomUUID();
+        profile = UserProfile.createInitial(targetUserId, "target_user");
+        profile.updatePersonalInfo(new PersonalInfo("John", "Doe", "JD", "Offensive bio", Map.of()));
     }
 
     @Test
-    void banUser_HappyPath_UpdatesProfileStatusAndPublishesEvents() {
-        BanUserCommand command = new BanUserCommand(targetUserId, adminId, "Spam policy violation")
-                .withContext(targetUserId, adminId);
-        when(profileRepository.findById(targetUserId)).thenReturn(Optional.of(activeProfile));
+    void sanitizeProfile_HappyPath_ClearsBioAndPublishesEvents() {
+        var command = new SanitizeProfileCommand(targetUserId, moderatorId, "Offensive content");
+        when(profileRepository.findById(targetUserId)).thenReturn(Optional.of(profile));
+        when(profileRepository.save(profile)).thenReturn(profile);
 
-        adminService.banUser(command);
+        adminService.sanitizeProfile(command);
 
-        assertThat(activeProfile.getStatus().name()).isEqualTo("BANNED");
-        verify(profileRepository).save(activeProfile);
+        assertThat(profile.getPersonalInfo().bio()).isNull();
+        assertThat(profile.getAvatar().isEmpty()).isTrue();
         verify(applicationEventPublisher).publishEvent(new ProfileCacheSyncEvent(targetUserId));
-        verify(auditLog).logAction(targetUserId, adminId, "ADMIN", "BAN_USER", "Spam policy violation");
-        verify(eventPublisher).publishProfileBanned(targetUserId, "Spam policy violation");
+        verify(auditLog).logAction(targetUserId, moderatorId, "MODERATOR", "SANITIZE_PROFILE", "Offensive content");
+        verify(eventPublisher).publishProfileUpdated(profile);
     }
 
     @Test
-    void banUser_NegativeCase_ThrowsExceptionWhenProfileNotFound() {
-        BanUserCommand command = new BanUserCommand(targetUserId, adminId, "Spam policy violation")
-                .withContext(targetUserId, adminId);
+    void sanitizeProfile_ProfileNotFound_ThrowsAndSavesNothing() {
+        var command = new SanitizeProfileCommand(targetUserId, moderatorId, "Offensive content");
         when(profileRepository.findById(targetUserId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> adminService.banUser(command))
+        assertThatThrownBy(() -> adminService.sanitizeProfile(command))
                 .isInstanceOf(ProfileNotFoundException.class);
 
         verify(profileRepository, never()).save(any());
-        verify(applicationEventPublisher, never()).publishEvent(any());
+        verifyNoInteractions(eventPublisher, auditLog, applicationEventPublisher);
     }
 }

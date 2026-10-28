@@ -1,36 +1,22 @@
 package lumeva.profileservice.infrastructure.security.resolver;
 
-import lumeva.profileservice.domain.exceptions.MissingHeaderException;
-import lumeva.profileservice.infrastructure.security.annotation.CurrentUserId;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.core.MethodParameter;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
 class CurrentUserIdArgumentResolverTest {
 
-    @Mock
-    private NativeWebRequest webRequest;
-
-    @Mock
-    private MethodParameter parameter;
-
-    @InjectMocks
-    private CurrentUserIdArgumentResolver resolver;
+    private final CurrentUserIdArgumentResolver resolver = new CurrentUserIdArgumentResolver();
 
     @AfterEach
     void tearDown() {
@@ -38,36 +24,21 @@ class CurrentUserIdArgumentResolverTest {
     }
 
     @Test
-    @DisplayName("Должен доставать UUID из SecurityContextHolder, если он там задан")
-    void resolveFromSecurityContext() {
+    @DisplayName("Берёт id пользователя из claim sub в JWT")
+    void resolvesSubjectFromJwt() {
         UUID userId = UUID.randomUUID();
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(userId, null, java.util.List.of())
-        );
+        Jwt jwt = Jwt.withTokenValue("token").header("alg", "RS256").subject(userId.toString()).build();
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt, List.of()));
 
-        Object result = resolver.resolveArgument(parameter, null, webRequest, null);
+        Object result = resolver.resolveArgument(null, null, null, null);
 
         assertThat(result).isEqualTo(userId);
     }
 
     @Test
-    @DisplayName("Должен читать X-User-Id из заголовка, если SecurityContext пуст")
-    void resolveFromHeader() {
-        UUID userId = UUID.randomUUID();
-        when(webRequest.getHeader("X-User-Id")).thenReturn(userId.toString());
-
-        Object result = resolver.resolveArgument(parameter, null, webRequest, null);
-
-        assertThat(result).isEqualTo(userId);
-    }
-
-    @Test
-    @DisplayName("Должен бросать MissingHeaderException при невалидном UUID в заголовке")
-    void throwOnInvalidUuidHeader() {
-        when(webRequest.getHeader("X-User-Id")).thenReturn("not-a-uuid");
-
-        assertThatThrownBy(() -> resolver.resolveArgument(parameter, null, webRequest, null))
-                .isInstanceOf(MissingHeaderException.class)
-                .hasMessageContaining("Invalid UUID");
+    @DisplayName("Без JWT-аутентификации бросает AuthenticationCredentialsNotFoundException (401)")
+    void throwsWithoutJwt() {
+        assertThatThrownBy(() -> resolver.resolveArgument(null, null, null, null))
+                .isInstanceOf(AuthenticationCredentialsNotFoundException.class);
     }
 }

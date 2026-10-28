@@ -22,6 +22,7 @@ public interface UserProfileMongoMapper {
     @Mapping(target = "originalAvatarUrl", source = "avatar.originalUrl")
     @Mapping(target = "thumbnailAvatarUrl", source = "avatar.thumbnailUrl")
     @Mapping(target = "avatarUploadedAt", source = "avatar.uploadedAt")
+    @Mapping(target = "version", ignore = true) // версию в read-модель пишет только projector из события
     UserProfileReadDocument toDocument(UserProfile domain);
 
     default UserProfile toDomain(UserProfileReadDocument doc) {
@@ -39,14 +40,14 @@ public interface UserProfileMongoMapper {
 
         return new UserProfile(
                 doc.getId(),
-                doc.getEmail(),
+                doc.getUsername(),
                 personalInfo,
                 preferences,
                 avatar,
-                AdminMetadata.empty(),
                 ProfileStatus.valueOf(doc.getStatus()),
                 doc.getCreatedAt(),
-                doc.getUpdatedAt()
+                doc.getUpdatedAt(),
+                null
         );
     }
 }

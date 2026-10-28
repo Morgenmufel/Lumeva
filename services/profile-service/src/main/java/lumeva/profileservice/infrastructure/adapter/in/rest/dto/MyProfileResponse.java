@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.UUID;
 public record MyProfileResponse(
         UUID id,
-        String email,
+        String username,
         String status,
         String firstName,
         String lastName,

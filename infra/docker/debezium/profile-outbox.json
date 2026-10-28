@@ -1,0 +1,29 @@
+{
+  "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+  "plugin.name": "pgoutput",
+  "database.hostname": "postgres",
+  "database.port": "5432",
+  "database.user": "debezium",
+  "database.password": "${env:DEBEZIUM_DB_PASSWORD}",
+  "database.dbname": "lumeva_profile",
+  "topic.prefix": "lumeva-profile-cdc",
+
+  "slot.name": "debezium_profile_outbox",
+  "publication.name": "dbz_profile_outbox",
+  "publication.autocreate.mode": "disabled",
+  "table.include.list": "public.outbox_events",
+  "skipped.operations": "u,d,t",
+  "tombstones.on.delete": "false",
+
+  "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+  "value.converter": "io.debezium.converters.BinaryDataConverter",
+
+  "transforms": "outbox",
+  "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+  "transforms.outbox.table.field.event.id": "id",
+  "transforms.outbox.table.field.event.key": "aggregate_id",
+  "transforms.outbox.table.field.event.payload": "payload",
+  "transforms.outbox.route.by.field": "aggregate_type",
+  "transforms.outbox.route.topic.replacement": "lumeva.${routedByValue}.events",
+  "transforms.outbox.table.fields.additional.placement": "type:header:eventType"
+}

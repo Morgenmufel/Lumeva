@@ -46,14 +46,14 @@ public interface ProfileCacheMapper {
 
         return new UserProfile(
                 dto.getId(),
-                dto.getEmail(),
+                dto.getUsername(),
                 personalInfo,
                 preferences,
                 avatar,
-                AdminMetadata.empty(),
                 ProfileStatus.valueOf(dto.getStatus()),
                 dto.getCreatedAt(),
-                dto.getUpdatedAt()
+                dto.getUpdatedAt(),
+                null
         );
     }
 }

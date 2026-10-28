@@ -5,6 +5,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,7 +15,6 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -30,8 +30,8 @@ public class UserProfileEntity {
     @Id
     private UUID id;
 
-    @Column(nullable = false, unique = true)
-    private String email;
+    @Column(nullable = false, unique = true, length = 50)
+    private String username;
 
     @Column(nullable = false)
     private String status;
@@ -48,15 +48,19 @@ public class UserProfileEntity {
     @Column(name = "avatar", nullable = false)
     private AvatarJson avatar;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "admin_metadata", nullable = false)
-    private AdminMetadataJson adminMetadata;
-
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    /**
+     * Оптимистическая блокировка: UPDATE ... WHERE version = ?.
+     * Обёртка Long, а не long: null означает «новая сущность», и Spring Data
+     * делает persist без лишнего SELECT, как было бы при merge.
+     */
+    @Version
+    private Long version;
 
     public record PersonalInfoJson(
             String firstName,
@@ -78,12 +82,5 @@ public class UserProfileEntity {
             String originalUrl,
             String thumbnailUrl,
             Instant uploadedAt
-    ) {}
-
-    public record AdminMetadataJson(
-            UUID bannedBy,
-            String banReason,
-            Instant bannedAt,
-            List<String> moderatorNotes
     ) {}
 }

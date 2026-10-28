@@ -14,4 +14,7 @@ spring:
           jwk-set-uri: http://localhost:9999/dummy-certs
 
 lumeva:
-  internal-secret: test-internal-secret
+  kafka:
+    # mock:// — Registry в памяти из библиотеки Confluent, внешний сервис не нужен
+    schema-registry-url: mock://profile-service-test
+    auto-register-schemas: true

@@ -1,0 +1,9 @@
+{
+  "type": "record",
+  "name": "ProfileCreated",
+  "namespace": "lumeva.events.profile",
+  "fields": [
+    { "name": "metadata", "type": "lumeva.events.common.EventMetadata" },
+    { "name": "profile", "type": "lumeva.events.profile.ProfileSnapshot" }
+  ]
+}

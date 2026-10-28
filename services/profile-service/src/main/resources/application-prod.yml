@@ -41,15 +41,11 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          jwk-set-uri: ${KEYCLOAK_BASE_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs
           issuer-uri: ${KEYCLOAK_ISSUER_URI}
-
-lumeva:
-  internal-secret: ${INTERNAL_API_SECRET}
 
 logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
   level:
     root: WARN
-    com.lumeva.profile: INFO
+    lumeva.profileservice: INFO

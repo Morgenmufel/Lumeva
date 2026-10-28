@@ -4,12 +4,15 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lumeva.profileservice.application.dto.*;
 import lumeva.profileservice.domain.port.in.GetProfileUseCase;
+import lumeva.profileservice.domain.port.in.ProvisionProfileUseCase;
 import lumeva.profileservice.domain.port.in.UpdateProfileUseCase;
 import lumeva.profileservice.infrastructure.adapter.in.rest.dto.MyProfileResponse;
 import lumeva.profileservice.infrastructure.adapter.in.rest.dto.PublicProfileResponse;
 import lumeva.profileservice.infrastructure.adapter.in.rest.mapper.ProfileWebMapper;
 import lumeva.profileservice.infrastructure.security.annotation.CurrentUserId;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,11 +26,16 @@ public class UserProfileController {
 
     private final GetProfileUseCase getProfileUseCase;
     private final UpdateProfileUseCase updateProfileUseCase;
+    private final ProvisionProfileUseCase provisionProfileUseCase;
     private final ProfileWebMapper webMapper;
 
+    /** Если профиля ещё нет (событие регистрации не дошло), он создаётся из токена — ADR-008. */
     @GetMapping("/me")
-    public ResponseEntity<MyProfileResponse> getMyProfile(@CurrentUserId UUID userId) {
-        return ResponseEntity.ok(webMapper.toMyResponse(getProfileUseCase.getMyProfile(userId)));
+    public ResponseEntity<MyProfileResponse> getMyProfile(@AuthenticationPrincipal Jwt jwt) {
+        UUID userId = UUID.fromString(jwt.getSubject());
+        String username = jwt.getClaimAsString("preferred_username");
+        return ResponseEntity.ok(webMapper.toMyResponse(
+                provisionProfileUseCase.getOrProvisionMyProfile(userId, username)));
     }
 
     @GetMapping("/public/{userId}")

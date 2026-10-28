@@ -1,0 +1,28 @@
+{
+  "type": "record",
+  "name": "ProfileSnapshot",
+  "namespace": "lumeva.events.profile",
+  "doc": "Полное состояние профиля: потребитель заменяет документ целиком",
+  "fields": [
+    { "name": "userId", "type": "string" },
+    { "name": "username", "type": "string" },
+    { "name": "status", "type": {
+      "type": "enum", "name": "ProfileStatus",
+      "symbols": ["UNKNOWN", "ACTIVE", "RESTRICTED", "DELETED", "ANONYMIZED"],
+      "default": "UNKNOWN" } },
+    { "name": "firstName", "type": ["null", "string"], "default": null },
+    { "name": "lastName", "type": ["null", "string"], "default": null },
+    { "name": "displayName", "type": ["null", "string"], "default": null },
+    { "name": "bio", "type": ["null", "string"], "default": null },
+    { "name": "socialLinks", "type": { "type": "map", "values": "string" }, "default": {} },
+    { "name": "theme", "type": "string" },
+    { "name": "locale", "type": "string" },
+    { "name": "timezone", "type": "string" },
+    { "name": "emailNotifications", "type": "boolean" },
+    { "name": "pushNotifications", "type": "boolean" },
+    { "name": "originalAvatarUrl", "type": ["null", "string"], "default": null },
+    { "name": "thumbnailAvatarUrl", "type": ["null", "string"], "default": null },
+    { "name": "createdAt", "type": { "type": "long", "logicalType": "timestamp-millis" } },
+    { "name": "updatedAt", "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

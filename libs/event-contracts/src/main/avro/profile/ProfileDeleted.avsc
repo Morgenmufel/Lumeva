@@ -1,0 +1,9 @@
+{
+  "type": "record",
+  "name": "ProfileDeleted",
+  "namespace": "lumeva.events.profile",
+  "fields": [
+    { "name": "metadata", "type": "lumeva.events.common.EventMetadata" },
+    { "name": "userId", "type": "string" }
+  ]
+}

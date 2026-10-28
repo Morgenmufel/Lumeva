@@ -10,154 +10,162 @@ import java.util.UUID;
 
 public class UserProfile {
     private final UUID id;
-    private String email;
+    /** Версия для оптимистической блокировки. null — профиль ещё не сохранён. */
+    private final Long version;
+    private String username;
     private PersonalInfo personalInfo;
     private Preferences preferences;
-    private ProfileStatus profileStatus;
+    private ProfileStatus status;
     private Avatar avatar;
-    private AdminMetadata adminMetadata;
     private final Instant createdAt;
     private Instant updatedAt;
-    private Instant suspendedUntil;
 
     public UserProfile(
             UUID id,
-            String email,
+            String username,
             PersonalInfo personalInfo,
             Preferences preferences,
             Avatar avatar,
-            AdminMetadata adminMetadata,
-            ProfileStatus profileStatus,
+            ProfileStatus status,
             Instant createdAt,
-            Instant updatedAt
+            Instant updatedAt,
+            Long version
     ) {
+        this.version = version;
         this.id = Objects.requireNonNull(id, "User ID cannot be null");
-        this.email = Objects.requireNonNull(email, "Email cannot be null");
+        this.username = Objects.requireNonNull(username, "Username cannot be null");
         this.personalInfo = personalInfo != null ? personalInfo : PersonalInfo.empty();
         this.preferences = preferences != null ? preferences : Preferences.defaultPreferences();
         this.avatar = avatar != null ? avatar : Avatar.empty();
-        this.adminMetadata = adminMetadata != null ? adminMetadata : AdminMetadata.empty();
-        this.profileStatus = profileStatus != null ? profileStatus : ProfileStatus.ACTIVE;
+        this.status = status != null ? status : ProfileStatus.ACTIVE;
         this.createdAt = createdAt != null ? createdAt : Instant.now();
         this.updatedAt = updatedAt != null ? updatedAt : Instant.now();
     }
 
-    public static UserProfile createInitial(UUID id, String email) {
+    public static UserProfile createInitial(UUID id, String username) {
         return new UserProfile(
                 id,
-                email,
+                username,
                 PersonalInfo.empty(),
                 Preferences.defaultPreferences(),
                 Avatar.empty(),
-                AdminMetadata.empty(),
                 ProfileStatus.ACTIVE,
                 Instant.now(),
-                Instant.now()
+                Instant.now(),
+                null
         );
     }
 
-
     public void updatePersonalInfo(PersonalInfo newInfo) {
-        ensureNotBlocked();
+        ensureEditable();
         this.personalInfo = Objects.requireNonNull(newInfo, "PersonalInfo cannot be null");
-        this.updatedAt = Instant.now();
+        touch();
     }
 
     public void updatePreferences(Preferences newPreferences) {
-        ensureNotBlocked();
+        ensureEditable();
         this.preferences = Objects.requireNonNull(newPreferences, "Preferences cannot be null");
-        this.updatedAt = Instant.now();
+        touch();
     }
 
     public void updateAvatar(Avatar newAvatar) {
-        ensureNotBlocked();
+        ensureEditable();
         this.avatar = Objects.requireNonNull(newAvatar, "Avatar cannot be null");
-        this.updatedAt = Instant.now();
+        touch();
     }
 
-    public void ban(UUID adminId, String reason) {
-        this.profileStatus = ProfileStatus.BANNED;
-        this.adminMetadata = this.adminMetadata.withBan(adminId, reason);
-        this.updatedAt = Instant.now();
-    }
-
-    public void unban() {
-        this.profileStatus = ProfileStatus.ACTIVE;
-        this.adminMetadata = this.adminMetadata.unBan();
-        this.updatedAt = Instant.now();
-    }
-
-    public void flag() {
-        if (this.profileStatus == ProfileStatus.ACTIVE) {
-            this.profileStatus = ProfileStatus.FLAGGED;
-            this.updatedAt = Instant.now();
-        }
-    }
-
-    public void suspend(Instant suspendedUntil) {
-        ensureNotBlocked();
-        this.suspendedUntil = suspendedUntil;
-        this.profileStatus = ProfileStatus.FROZEN;
-        this.updatedAt = Instant.now();
-    }
-
-    public void sanitize(UUID moderatorId, String reason) {
+    /**
+     * Принудительная очистка публичного контента по решению модерации.
+     * Кто и почему её запросил, хранит Moderation.
+     */
+    public void sanitize() {
         this.personalInfo = this.personalInfo.sanitizeBio();
         this.avatar = Avatar.empty();
-        this.adminMetadata = this.adminMetadata.addNote("Sanitized at " + Instant.now()
-                + " by " + moderatorId + ": " + reason);
-        this.updatedAt = Instant.now();
+        touch();
     }
 
-    public void addModeratorNote(UUID moderatorId, String note) {
-        this.adminMetadata = this.adminMetadata.addNote("Note at " + Instant.now()
-                + " by " + moderatorId + ": " + note);
-        this.updatedAt = Instant.now();
-    }
-
+    /**
+     * Анонимизация: убираем всё, что указывает на человека, включая публичный ник.
+     * Профиль под санкцией анонимизировать нельзя, иначе это способ уйти от бана.
+     */
     public void anonymize() {
-        this.email = "anonymized_" + id + "@deleted.lumeva.com";
+        ensureEditable();
+        this.username = "deleted-" + id.toString().substring(0, 8);
         this.personalInfo = PersonalInfo.empty();
         this.avatar = Avatar.empty();
-        this.profileStatus = ProfileStatus.ANONYMIZED;
-        this.updatedAt = Instant.now();
+        this.status = ProfileStatus.ANONYMIZED;
+        touch();
     }
 
-    private void ensureNotBlocked() {
-        if (this.profileStatus == ProfileStatus.BANNED || this.profileStatus == ProfileStatus.FROZEN) {
-            throw new IllegalStateException("Operation denied. Profile status is " + this.profileStatus);
+    /**
+     * Переходы статусов:
+     *   ACTIVE      -> DELETED      пользователь удаляет аккаунт
+     *   ACTIVE      -> ANONYMIZED   пользователь запрашивает анонимизацию
+     *   DELETED     -> ANONYMIZED   система по истечении срока хранения (позже)
+     *   ACTIVE      -> RESTRICTED   событие санкции от Moderation
+     *   RESTRICTED  -> ACTIVE       событие снятия санкции от Moderation
+     * Любой другой переход запрещён.
+     *
+     * restrict() и liftRestriction() идемпотентны: Kafka может доставить событие повторно,
+     * и повтор не должен падать или менять результат (ADR-007).
+     */
+    public void restrict() {
+        if (this.status == ProfileStatus.RESTRICTED) {
+            return;
         }
+        if (this.status != ProfileStatus.ACTIVE) {
+            throw new DomainValidationException("Cannot restrict profile in status " + this.status);
+        }
+        this.status = ProfileStatus.RESTRICTED;
+        touch();
+    }
+
+    public void liftRestriction() {
+        if (this.status == ProfileStatus.ACTIVE) {
+            return;
+        }
+        if (this.status != ProfileStatus.RESTRICTED) {
+            throw new DomainValidationException("Cannot lift restriction from profile in status " + this.status);
+        }
+        this.status = ProfileStatus.ACTIVE;
+        touch();
     }
 
     public void deleteAccount() {
-        if (this.profileStatus == ProfileStatus.BANNED) {
-            throw new ProfileBlockedException(this.id, this.profileStatus);
+        if (this.status == ProfileStatus.RESTRICTED) {
+            throw new ProfileBlockedException(this.id, this.status);
         }
-        if (this.profileStatus == ProfileStatus.DELETED) {
+        if (this.status == ProfileStatus.DELETED || this.status == ProfileStatus.ANONYMIZED) {
             throw new DomainValidationException("Profile is already deleted");
         }
-
-        this.profileStatus = ProfileStatus.DELETED;
-        this.updatedAt = Instant.now();
+        this.status = ProfileStatus.DELETED;
+        touch();
     }
 
     public void ensureIsActive() {
-        if (this.profileStatus == ProfileStatus.DELETED) {
+        if (this.status == ProfileStatus.DELETED || this.status == ProfileStatus.ANONYMIZED) {
             throw new ProfileNotFoundException(this.id);
         }
-        if (this.profileStatus == ProfileStatus.BANNED) {
-            throw new ProfileBlockedException(this.id, this.profileStatus);
+        if (this.status == ProfileStatus.RESTRICTED) {
+            throw new ProfileBlockedException(this.id, this.status);
         }
     }
 
+    private void ensureEditable() {
+        ensureIsActive();
+    }
+
+    private void touch() {
+        this.updatedAt = Instant.now();
+    }
+
     public UUID getId() { return id; }
-    public String getEmail() { return email; }
+    public Long getVersion() { return version; }
+    public String getUsername() { return username; }
     public PersonalInfo getPersonalInfo() { return personalInfo; }
     public Preferences getPreferences() { return preferences; }
     public Avatar getAvatar() { return avatar; }
-    public AdminMetadata getAdminMetadata() { return adminMetadata; }
-    public ProfileStatus getStatus() { return profileStatus; }
+    public ProfileStatus getStatus() { return status; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
-    public Instant getSuspendedUntil() { return suspendedUntil; }
 }

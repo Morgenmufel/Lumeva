@@ -6,7 +6,7 @@ import java.util.UUID;
 
 public record AdminProfileResponse(
         UUID id,
-        String email,
+        String username,
         String status,
         String firstName,
         String lastName,
@@ -21,7 +21,6 @@ public record AdminProfileResponse(
         String originalAvatarUrl,
         String thumbnailAvatarUrl,
         Instant avatarUploadedAt,
-        AdminMetadataResponse adminMetadata,
         Instant createdAt,
         Instant updatedAt
 ) {}

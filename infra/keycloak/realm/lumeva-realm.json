@@ -1,0 +1,171 @@
+{
+  "realm": "lumeva",
+  "enabled": true,
+  "displayName": "Lumeva",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": false,
+  "editUsernameAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "verifyEmail": false,
+  "bruteForceProtected": true,
+  "sslRequired": "external",
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "internationalizationEnabled": true,
+  "supportedLocales": [
+    "ru",
+    "en"
+  ],
+  "defaultLocale": "ru",
+  "roles": {
+    "realm": [
+      {
+        "name": "USER",
+        "description": "Обычный пользователь"
+      },
+      {
+        "name": "MODERATOR",
+        "description": "Модератор: включает права USER",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "USER"
+          ]
+        }
+      },
+      {
+        "name": "ADMIN",
+        "description": "Администратор: включает права MODERATOR",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "MODERATOR"
+          ]
+        }
+      },
+      {
+        "name": "default-roles-lumeva",
+        "description": "Роли по умолчанию для новых пользователей",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "USER",
+            "offline_access",
+            "uma_authorization"
+          ]
+        }
+      }
+    ]
+  },
+  "defaultRole": {
+    "name": "default-roles-lumeva",
+    "composite": true,
+    "clientRole": false
+  },
+  "clients": [
+    {
+      "clientId": "lumeva-bff",
+      "name": "Lumeva BFF (Gateway для веба)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "${LUMEVA_BFF_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8080/login/oauth2/code/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:5173/*"
+      }
+    },
+    {
+      "clientId": "lumeva-mobile",
+      "name": "Lumeva iOS",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "redirectUris": [
+        "lumeva://oauth/callback"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "lumeva://oauth/logout"
+      }
+    },
+    {
+      "clientId": "profile-service",
+      "name": "Profile Service (вызовы от имени сервиса)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "${PROFILE_SERVICE_CLIENT_SECRET}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": true
+    }
+  ],
+  "users": [
+    {
+      "username": "user",
+      "email": "user@lumeva.local",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${LUMEVA_TEST_USER_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-lumeva"
+      ]
+    },
+    {
+      "username": "moderator",
+      "email": "moderator@lumeva.local",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${LUMEVA_TEST_USER_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-lumeva",
+        "MODERATOR"
+      ]
+    },
+    {
+      "username": "admin",
+      "email": "admin@lumeva.local",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${LUMEVA_TEST_USER_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-lumeva",
+        "ADMIN"
+      ]
+    }
+  ]
+}

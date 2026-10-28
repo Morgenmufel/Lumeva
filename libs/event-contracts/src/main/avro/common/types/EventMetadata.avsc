@@ -1,0 +1,11 @@
+{
+  "type": "record",
+  "name": "EventMetadata",
+  "namespace": "lumeva.events.common",
+  "doc": "Общие поля любого события Lumeva",
+  "fields": [
+    { "name": "eventId", "type": "string", "doc": "UUID события, ключ идемпотентности" },
+    { "name": "occurredAt", "type": { "type": "long", "logicalType": "timestamp-millis" } },
+    { "name": "aggregateVersion", "type": "long", "doc": "Версия агрегата после изменения" }
+  ]
+}

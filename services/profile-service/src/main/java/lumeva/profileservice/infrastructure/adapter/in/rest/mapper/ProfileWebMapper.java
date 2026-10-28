@@ -1,8 +1,6 @@
 package lumeva.profileservice.infrastructure.adapter.in.rest.mapper;
 
-import lumeva.profileservice.domain.model.AdminMetadata;
 import lumeva.profileservice.domain.model.UserProfile;
-import lumeva.profileservice.infrastructure.adapter.in.rest.dto.AdminMetadataResponse;
 import lumeva.profileservice.infrastructure.adapter.in.rest.dto.AdminProfileResponse;
 import lumeva.profileservice.infrastructure.adapter.in.rest.dto.MyProfileResponse;
 import lumeva.profileservice.infrastructure.adapter.in.rest.dto.PublicProfileResponse;
@@ -10,7 +8,6 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 
-import java.time.Instant;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface ProfileWebMapper {
@@ -54,8 +51,6 @@ public interface ProfileWebMapper {
     @Mapping(target = "originalAvatarUrl", source = "avatar.originalUrl")
     @Mapping(target = "thumbnailAvatarUrl", source = "avatar.thumbnailUrl")
     @Mapping(target = "avatarUploadedAt", source = "avatar.uploadedAt")
-    @Mapping(target = "adminMetadata", expression = "java(mapAdminMetadata(domain.getAdminMetadata(), domain.getSuspendedUntil()))")
     AdminProfileResponse toAdminResponse(UserProfile domain);
 
-    AdminMetadataResponse mapAdminMetadata(AdminMetadata domain, Instant suspendedUntil);
 }

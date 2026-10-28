@@ -3,10 +3,9 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:lumeva_profile}
-    username: ${POSTGRES_USER:postgres}
-    password: ${POSTGRES_PASSWORD:postgres}
-    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5434/lumeva_profile
+    username: profile
+    password: ${PROFILE_DB_PASSWORD}
     hikari:
       maximum-pool-size: 5
       minimum-idle: 2
@@ -22,19 +21,30 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
+      host: localhost
+      port: 6379
+      password: ${VALKEY_PASSWORD}
+
+  mongodb:
+    uri: mongodb://profile:${MONGO_PROFILE_PASSWORD}@localhost:27017/lumeva_profile_read?authSource=lumeva_profile_read
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # ключи JWKS Spring находит сам по адресу issuer; iss в токене обязан совпасть
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/lumeva}
 
 lumeva:
-  internal-secret: ${INTERNAL_API_SECRET:super-secret-internal-key}
+  kafka:
+    schema-registry-url: ${SCHEMA_REGISTRY_URL:http://localhost:8085}
+    auto-register-schemas: true
 
 logging:
   level:
     root: INFO
-    com.lumeva.profile: DEBUG
+    lumeva.profileservice: DEBUG
     org.springframework.security: INFO

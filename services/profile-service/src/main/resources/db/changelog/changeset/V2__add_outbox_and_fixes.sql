@@ -1,12 +1,10 @@
-
 CREATE TABLE outbox_events (
-                               id UUID PRIMARY KEY,
-                               aggregate_type VARCHAR(50) NOT NULL,
-                               aggregate_id VARCHAR(36) NOT NULL,
-                               type VARCHAR(100) NOT NULL,
-                               payload JSONB NOT NULL,
-                               status VARCHAR(20) NOT NULL,
-                               created_at TIMESTAMP WITH TIME ZONE NOT NULL
+                               id            UUID         PRIMARY KEY,
+                               aggregate_type VARCHAR(64)  NOT NULL,
+                               aggregate_id   VARCHAR(64)  NOT NULL,
+                               type          VARCHAR(128) NOT NULL,
+                               payload       BYTEA        NOT NULL,
+                               created_at    TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_outbox_status_created ON outbox_events(status, created_at);
+CREATE INDEX idx_outbox_events_created_at ON outbox_events (created_at);

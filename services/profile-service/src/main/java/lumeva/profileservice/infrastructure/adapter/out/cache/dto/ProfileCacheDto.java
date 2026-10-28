@@ -15,7 +15,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class ProfileCacheDto {
     private UUID id;
-    private String email;
+    private String username;
     private String status;
     private String firstName;
     private String lastName;

@@ -1,7 +1,7 @@
 package lumeva.profileservice.infrastructure.adapter.out.persistence.mongo;
 
-import jakarta.persistence.Id;
 import lombok.*;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
@@ -18,7 +18,10 @@ public class UserProfileReadDocument {
 
     @Id
     private UUID id;
-    private String email;
+
+    /** Версия агрегата из последнего применённого события; по ней отсекаются дубли и устаревшие события. */
+    private Long version;
+    private String username;
     private String status;
 
     private String firstName;

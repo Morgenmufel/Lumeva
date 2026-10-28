@@ -10,10 +10,8 @@ import org.mapstruct.MappingConstants;
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface UserProfilePersistenceMapper {
 
-    @Mapping(target = "profileStatus", source = "status")
     UserProfile toDomain(UserProfileEntity entity);
 
-    @Mapping(target = "status", source = "profileStatus")
     UserProfileEntity toEntity(UserProfile domain);
 
     UserProfileEntity.PersonalInfoJson mapPersonalInfo(PersonalInfo personalInfo);
@@ -25,6 +23,4 @@ public interface UserProfilePersistenceMapper {
     UserProfileEntity.AvatarJson mapAvatar(Avatar avatar);
     Avatar mapAvatarJson(UserProfileEntity.AvatarJson json);
 
-    UserProfileEntity.AdminMetadataJson mapAdminMetadata(AdminMetadata adminMetadata);
-    AdminMetadata mapAdminMetadataJson(UserProfileEntity.AdminMetadataJson json);
 }
